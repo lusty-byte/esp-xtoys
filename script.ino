@@ -7,7 +7,7 @@
 #endif
 
 
-const int channel1Pin = 13;
+const int c1Pin = 13;
 
 
 const char* ssid = STASSID;
@@ -92,23 +92,75 @@ void connectToWifi() {
 
 /// XTOYS CONTROLS
 
+struct ChannelController {
+  int pin;
+  float period;
+  unsigned long lastChange;
+  bool channelState;
+};
+
+const int MAX_CHANNELS = 2;
+ChannelController channelControllers[MAX_CHANNELS];
+int channelCount = 0;
+
+void initializeChannel(int pin, float frequency) {
+  if (channelCount < MAX_CHANNELS) {
+    channelControllers[channelCount].pin = pin;
+    channelControllers[channelCount].period = 1000.0 / frequency;
+    channelControllers[channelCount].lastChange = millis();
+    channelControllers[channelCount].channelState = LOW;
+
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, channelControllers[channelCount].channelState);
+    channelCount++;
+  }
+}
+
+void updateChannels() {
+  unsigned long currentTime = millis();
+  for (int i = 0; i < channelCount; i++) {
+    if (currentTime - channelControllers[i].lastChange >= channelControllers[i].period / 2) {
+      // Toggle the channel state
+      channelControllers[i].channelState = !channelControllers[i].channelState;
+      digitalWrite(channelControllers[i].pin, channelControllers[i].channelState);
+      channelControllers[i].lastChange = currentTime;
+    }
+  }
+}
+
+void setFrequency(int channelIndex, float frequency) {
+  if (channelIndex >= 0 && channelIndex < channelCount) {
+    channelControllers[channelIndex].period = 1000.0 / frequency;
+  }
+}
+
+void changeChannelFrequency(int channelIndex, float newFrequency) {
+  if (channelIndex >= 0 && channelIndex < channelCount) {
+    setFrequency(channelIndex, newFrequency);
+  }
+}
+
 /*
+  CHANNEL 1
   POST https://ipaddress/channel/1
   DATA: <<vibrate>>
   MAX INTENSITY: 100
 */
-void handleChannel1() {
-  digitalWrite(LED_BUILTIN, 1);
-
+void updateC1() {
   server.send(200);
 
   String intensity = server.arg("plain");
   intensity.trim();
-  Serial.println("Intensity: " + intensity);
 
-  digitalWrite(LED_BUILTIN, 0);
+  Serial.print("Intensity: ");
+  Serial.println(intensity);
+
+  changeChannelFrequency(0, intensity.toDouble());
 }
 
+void setUpToysPinControls() {
+  initializeChannel(13, 2.0);
+}
 
 /// WEB SERVER 
 void handleRoot() {
@@ -140,7 +192,7 @@ void startWebServer() {
   server.enableCORS(true);
 
   server.on("/", handleRoot);
-  server.on("/channel/1", handleChannel1);
+  server.on("/channel/1", updateC1);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -152,7 +204,7 @@ void startWebServer() {
 /// MAIN
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); 
-  pinMode(channel1Pin, OUTPUT);
+  setUpToysPinControls();
   Serial.begin(115200);
   Serial.println();
   Serial.println();
@@ -163,4 +215,5 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  updateChannels();
 }
