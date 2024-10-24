@@ -7,9 +7,6 @@
 #endif
 
 
-const int c1Pin = 13;
-
-
 const char* ssid = STASSID;
 const char* password = STAPSK;
 
@@ -144,7 +141,6 @@ void changeChannelFrequency(int channelIndex, float newFrequency) {
   CHANNEL 1
   POST https://ipaddress/channel/1
   DATA: <<vibrate>>
-  MAX INTENSITY: 100
 */
 void updateC1() {
   server.send(200);
@@ -152,14 +148,30 @@ void updateC1() {
   String intensity = server.arg("plain");
   intensity.trim();
 
+  changeChannelFrequency(0, intensity.toDouble());
   Serial.print("Intensity: ");
   Serial.println(intensity);
+}
 
-  changeChannelFrequency(0, intensity.toDouble());
+/*
+  CHANNEL 2
+  POST https://ipaddress/channel/2
+  DATA: <<vibrate>>
+*/
+void updateC2() {
+  server.send(200);
+
+  String intensity = server.arg("plain");
+  intensity.trim();
+
+  changeChannelFrequency(1, intensity.toDouble());
+  Serial.print("Intensity: ");
+  Serial.println(intensity);
 }
 
 void setUpToysPinControls() {
-  initializeChannel(13, 2.0);
+  initializeChannel(12, 0.0);
+  initializeChannel(13, 0.0);
 }
 
 /// WEB SERVER 
@@ -193,6 +205,7 @@ void startWebServer() {
 
   server.on("/", handleRoot);
   server.on("/channel/1", updateC1);
+  server.on("/channel/2", updateC2);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -212,6 +225,8 @@ void setup() {
   connectToWifi();
   startWebServer();
 }
+
+
 
 void loop() {
   server.handleClient();
