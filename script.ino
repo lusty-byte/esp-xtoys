@@ -100,12 +100,12 @@ void connectToWifi() {
 
 
 /// XTOYS CONTROLS
-
 struct ChannelController {
   int pin;
   float period;
-  unsigned long lastChange;
-  bool channelState;
+  float dutyCycle;
+  unsigned long lastActivation;
+  bool state;
 };
 
 const int MAX_CHANNELS = 2;
@@ -116,36 +116,40 @@ void initializeChannel(int pin, float frequency) {
   if (channelCount < MAX_CHANNELS) {
     channelControllers[channelCount].pin = pin;
     channelControllers[channelCount].period = 1000.0 / frequency;
-    channelControllers[channelCount].lastChange = millis();
-    channelControllers[channelCount].channelState = LOW;
+    channelControllers[channelCount].dutyCycle = 0.0;
+    channelControllers[channelCount].lastActivation = millis();
+    channelControllers[channelCount].state = false;
 
     pinMode(pin, OUTPUT);
-    digitalWrite(pin, channelControllers[channelCount].channelState);
+    digitalWrite(pin, channelControllers[channelCount].state);
     channelCount++;
   }
 }
 
+void setIntensity(int channelIndex, float intensity) {
+  if (channelIndex >= 0 && channelIndex < channelCount) {
+    channelControllers[channelIndex].dutyCycle = channelControllers[channelIndex].period * (intensity / 100.0);
+  }
+}
+
+void updateChannel(int channel, bool state) {
+  channelControllers[channel].state = state;
+  digitalWrite(channelControllers[channel].pin, channelControllers[channel].state);
+}
+
 void updateChannels() {
-  unsigned long currentTime = millis();
-  for (int i = 0; i < channelCount; i++) {
-    if (currentTime - channelControllers[i].lastChange >= channelControllers[i].period / 2) {
-      // Toggle the channel state
-      channelControllers[i].channelState = !channelControllers[i].channelState;
-      digitalWrite(channelControllers[i].pin, channelControllers[i].channelState);
-      channelControllers[i].lastChange = currentTime;
+  for (int channel = 0; channel < channelCount; channel++) {
+
+    unsigned long currentTime = millis();
+    unsigned long elapsedTime = currentTime - channelControllers[channel].lastActivation;
+
+    if (!channelControllers[channel].state && elapsedTime >= channelControllers[channel].period) {
+      updateChannel(channel, true);
+      channelControllers[channel].lastActivation = millis();
     }
-  }
-}
-
-void setFrequency(int channelIndex, float frequency) {
-  if (channelIndex >= 0 && channelIndex < channelCount) {
-    channelControllers[channelIndex].period = 1000.0 / frequency;
-  }
-}
-
-void changeChannelFrequency(int channelIndex, float newFrequency) {
-  if (channelIndex >= 0 && channelIndex < channelCount) {
-    setFrequency(channelIndex, newFrequency);
+    else if (channelControllers[channel].state && elapsedTime >= channelControllers[channel].dutyCycle) {
+      updateChannel(channel, false);
+    }
   }
 }
 
@@ -154,10 +158,11 @@ void updateC1() {
 
   String intensity = server.arg("plain");
   intensity.trim();
-
-  changeChannelFrequency(0, intensity.toDouble());
+ 
   Serial.print("Intensity: ");
   Serial.println(intensity);
+
+  setIntensity(0, intensity.toFloat());
 }
 
 void updateC2() {
@@ -166,14 +171,15 @@ void updateC2() {
   String intensity = server.arg("plain");
   intensity.trim();
 
-  changeChannelFrequency(1, intensity.toDouble());
   Serial.print("Intensity: ");
   Serial.println(intensity);
+
+  setIntensity(1, intensity.toFloat());
 }
 
 void setUpToysPinControls() {
-  initializeChannel(c1Pin, 0.0);
-  initializeChannel(c2Pin, 0.0);
+  initializeChannel(c1Pin, 40);
+  initializeChannel(c2Pin, 40);
 }
 
 /// WEB SERVER 
