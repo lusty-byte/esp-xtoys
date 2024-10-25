@@ -99,7 +99,7 @@ void connectToWifi() {
 }
 
 
-/// XTOYS CONTROLS
+/// TOYS CONTROLS
 struct ChannelController {
   int pin;
   float period;
@@ -153,36 +153,34 @@ void updateChannels() {
   }
 }
 
+/// WEB SERVER 
+
+// POST /channel/1
 void updateC1() {
   server.send(200);
 
   String intensity = server.arg("plain");
   intensity.trim();
  
-  Serial.print("Intensity: ");
+  Serial.print("Intensity C1: ");
   Serial.println(intensity);
 
   setIntensity(0, intensity.toFloat());
 }
 
+// POST /channel/2
 void updateC2() {
   server.send(200);
 
   String intensity = server.arg("plain");
   intensity.trim();
 
-  Serial.print("Intensity: ");
+  Serial.print("Intensity C2: ");
   Serial.println(intensity);
 
   setIntensity(1, intensity.toFloat());
 }
 
-void setUpToysPinControls() {
-  initializeChannel(c1Pin, 40);
-  initializeChannel(c2Pin, 40);
-}
-
-/// WEB SERVER 
 void handleRoot() {
   digitalWrite(LED_BUILTIN, 1);
   server.send(200, "text/plain", "hello from esp8266!\r\n");
@@ -204,7 +202,6 @@ void handleNotFound() {
   digitalWrite(LED_BUILTIN, 0);
 }
 
-
 void startWebServer() {
   server.getServer().setRSACert(new BearSSL::X509List(serverCert), new BearSSL::PrivateKey(serverKey));
   server.getServer().setCache(&serverCache);
@@ -225,10 +222,13 @@ void startWebServer() {
 /// MAIN
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); 
-  setUpToysPinControls();
+
   Serial.begin(115200);
   Serial.println();
   Serial.println();
+
+  initializeChannel(c1Pin, 40);
+  initializeChannel(c2Pin, 40);
 
   connectToWifi();
   startWebServer();
