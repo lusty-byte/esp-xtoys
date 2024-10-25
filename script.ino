@@ -6,6 +6,18 @@
 #define STAPSK "your password"
 #endif
 
+/*
+  BLINKER CHANNEL 1
+  POST https://ipaddress/channel/1
+  DATA: <<vibrate>>
+*/
+const int c1Pin = 12;
+/*
+  BLINKER CHANNEL 2
+  POST https://ipaddress/channel/2
+  DATA: <<vibrate>>
+*/
+const int c2Pin = 13;
 
 const char* ssid = STASSID;
 const char* password = STAPSK;
@@ -137,11 +149,6 @@ void changeChannelFrequency(int channelIndex, float newFrequency) {
   }
 }
 
-/*
-  CHANNEL 1
-  POST https://ipaddress/channel/1
-  DATA: <<vibrate>>
-*/
 void updateC1() {
   server.send(200);
 
@@ -153,11 +160,6 @@ void updateC1() {
   Serial.println(intensity);
 }
 
-/*
-  CHANNEL 2
-  POST https://ipaddress/channel/2
-  DATA: <<vibrate>>
-*/
 void updateC2() {
   server.send(200);
 
@@ -170,8 +172,8 @@ void updateC2() {
 }
 
 void setUpToysPinControls() {
-  initializeChannel(12, 0.0);
-  initializeChannel(13, 0.0);
+  initializeChannel(c1Pin, 0.0);
+  initializeChannel(c2Pin, 0.0);
 }
 
 /// WEB SERVER 
