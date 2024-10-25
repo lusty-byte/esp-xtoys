@@ -99,58 +99,9 @@ void connectToWifi() {
 }
 
 
-/// TOYS CONTROLS
-struct ChannelController {
-  int pin;
-  float period;
-  float dutyCycle;
-  unsigned long lastActivation;
-  bool state;
-};
-
-const int MAX_CHANNELS = 2;
-ChannelController channelControllers[MAX_CHANNELS];
-int channelCount = 0;
-
-void initializeChannel(int pin, float frequency) {
-  if (channelCount < MAX_CHANNELS) {
-    channelControllers[channelCount].pin = pin;
-    channelControllers[channelCount].period = 1000.0 / frequency;
-    channelControllers[channelCount].dutyCycle = 0.0;
-    channelControllers[channelCount].lastActivation = millis();
-    channelControllers[channelCount].state = false;
-
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, channelControllers[channelCount].state);
-    channelCount++;
-  }
-}
-
-void setIntensity(int channelIndex, float intensity) {
-  if (channelIndex >= 0 && channelIndex < channelCount) {
-    channelControllers[channelIndex].dutyCycle = channelControllers[channelIndex].period * (intensity / 100.0);
-  }
-}
-
-void updateChannel(int channel, bool state) {
-  channelControllers[channel].state = state;
-  digitalWrite(channelControllers[channel].pin, channelControllers[channel].state);
-}
-
-void updateChannels() {
-  for (int channel = 0; channel < channelCount; channel++) {
-
-    unsigned long currentTime = millis();
-    unsigned long elapsedTime = currentTime - channelControllers[channel].lastActivation;
-
-    if (!channelControllers[channel].state && elapsedTime >= channelControllers[channel].period) {
-      updateChannel(channel, true);
-      channelControllers[channel].lastActivation = millis();
-    }
-    else if (channelControllers[channel].state && elapsedTime >= channelControllers[channel].dutyCycle) {
-      updateChannel(channel, false);
-    }
-  }
+void updateChannel(int pin, int intensity) {
+  int value = 255 * intensity / 100;
+  analogWrite(pin, value);
 }
 
 /// WEB SERVER 
@@ -165,7 +116,7 @@ void updateC1() {
   Serial.print("Intensity C1: ");
   Serial.println(intensity);
 
-  setIntensity(0, intensity.toFloat());
+  updateChannel(c1Pin, intensity.toInt());
 }
 
 // POST /channel/2
@@ -178,7 +129,7 @@ void updateC2() {
   Serial.print("Intensity C2: ");
   Serial.println(intensity);
 
-  setIntensity(1, intensity.toFloat());
+  updateChannel(c2Pin, intensity.toInt());
 }
 
 void handleRoot() {
@@ -222,13 +173,12 @@ void startWebServer() {
 /// MAIN
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); 
+  pinMode(c2Pin, OUTPUT);
+  pinMode(c1Pin, OUTPUT);
 
   Serial.begin(115200);
   Serial.println();
   Serial.println();
-
-  initializeChannel(c1Pin, 40);
-  initializeChannel(c2Pin, 40);
 
   connectToWifi();
   startWebServer();
@@ -238,5 +188,4 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  updateChannels();
 }
